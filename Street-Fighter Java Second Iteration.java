@@ -1,6 +1,7 @@
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.BufferedImage;
 import javax.swing.*;
 
 class Game extends JPanel implements Runnable, KeyListener {
@@ -11,6 +12,9 @@ class Game extends JPanel implements Runnable, KeyListener {
     // Game state tracking
     private Thread gameThread;
     private String gameState = "PLAYING"; 
+    private int selectingPlayer = 1;
+    private int p1Selectionn = 0;
+    private int p2Selection = 1;
     private int timer = 60; // 60 seconds (requires a separate tick to decrement accurately, simplified here)
     private int maxRounds = 3;
     private int p1RoundsWon = 0;
@@ -27,6 +31,9 @@ class Game extends JPanel implements Runnable, KeyListener {
     private boolean wPressed, aPressed, sPressed, dPressed;
     private boolean upPressed, leftPressed, downPressed, rightPressed;
 
+    private String[] avatarNames = {"Blue Male", "Red Male", "Purple Female", "Pink Female"};
+    private String[] avatarFiles = {"char_blue_m.png", "char_red_m.png", "char_purp_f.png", "char_pink_f.png"};
+
     public Game() {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setBackground(Color.DARK_GRAY);
@@ -36,15 +43,16 @@ class Game extends JPanel implements Runnable, KeyListener {
         startNewMatch();
     }
 
-    public void startNewMatch() {
+    public void startNewMatch(int p1CharIndex, int p2CharIndex) {
         // Initialize level
         currentLevel = new Level("Dojo", 250);
 
         // Initialize players (health, speed, x, y, width, height, sprite(color), facingRight)
-        player1 = new Player(100, 6, 100, currentLevel.getGroundLevelY(), 50, 100, "RED", true);
-        player2 = new Player(100, 6, 650, currentLevel.getGroundLevelY(), 50, 100, "BLUE", false);
+        player1 = new Player(100, 6, 100, currentLevel.getGroundLevelY(), 50, 100, avatarFiles[p1CharIndex], true);
+        player2 = new Player(100, 6, 650, currentLevel.getGroundLevelY(), 50, 100, avatarFiles[p2CharIndex], false);
         
         gameState = "PLAYING";
+        setBackground(Color.DARK_GRAY);
         restartTimer = 0;
     }
 
@@ -124,6 +132,47 @@ class Game extends JPanel implements Runnable, KeyListener {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D) g;
+
+        if (gameState.equals("PLAYING") || gameState.equals("CHAR_SELECT")) {
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font("Arial", Fonr.Bold, 36));
+            FontMetrics fm = g2.getFontMetrics();
+
+            String title = "CHARACTER SELECT";
+            g2.drawString(title, WIDTH - fm.stringWidth(title))/2, 50);
+
+            g2.setFont(new Font("Arial", Font.PLAIN, 24));
+            String prompt = (selectingPlayer == 1) ? "Player 1: Choose Avatar (A/D, F)" : "Player2: Choose Avatar (Left/Right, Enter)";
+            g2.drawString(prompt, WIDTH - g2.getFontMetric().stringWidth(prompt))/ 2, 90);
+
+            int boxWidth = 150;
+            int boxHeight = 200;
+            int gap = 30;
+            int startX = (WIDTH - (4* boxWidth + 3 * gap))/2;
+            int y = 120;
+
+            for (int i = 0; i < 4; i++) {
+                int x = startX + (i * (boxWidth + gap));
+
+                if (selectingPlayer == 1 && i == p1Selection) g2.setColor(Color.RED);
+                else if (selectingPlayer == 2 && p2Selection) g2.setColor(Color.Blue);
+                else g2.setColor(Color.GRAY);
+
+                g2.fillRect(x, y, boxWidth, boxHeight);
+                g2.SetColor(Color.BLACK);
+                g2.drawRect(x, y, boxWidth, boxHeight);
+
+                g2.setColor(Color.WHITE);
+                G2.setFont(new Font("Arial", Font.BOLD, 14));
+                String[] desc = getAvatarDescription(i);
+                for (int j = 0; j < desc.length; j++) {
+                    g2.drawString(desc[j], x + 10, y + 30 + (j* 20));
+                }
+            }
+            return;
+        }
+                
 
         // Draw the ground from the Level class
         g.setColor(new Color(50, 50, 50));
@@ -159,11 +208,40 @@ class Game extends JPanel implements Runnable, KeyListener {
             g.drawString(msg, x, HEIGHT / 2);
         }
     }
+// Helper for descriptions
+    private String[] getAvatarDescription(int index) {
+        swithc (index) {
+            case 0: return new String[]{"Male", "Dark Hair", "Blue Shorts", "Blue Gloves"};
+            case 1: return new String[]{"Male", "Blond Hair", "Red Shorts", "Red Gloves"};
+            case 2: return new String[]{"Female", "Dark Hair", "Purple Shirt/Shorts", "Purple Gloves"};
+            case 3: return new String[]{"Female", "Blond Hair", "Pink Shirt/Shorts", "Pink Gloves"};
+            default: return new String[]{"Unkown"};
+        }
 
+            
     // --- Keyboard Controls ---
     @Override
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
+
+        //character selection
+        if (gameState.equals("PLAYING") || gameState.equals("CHAR_SELECT")) {
+            if (selectingPlayer == 1) {
+                if (key == KeyEvent.VK_A) p1Selection = (p1Selection > 0) ? p1Selection -1 : 3;
+                if (key == KeyEvent.VK_D) p1Selection = (p1Selection < 3) ? p1Selection +1 : 0;
+                if (key == KeyEvent.VK_F) {
+                    selectingPlayer = 2;
+                }
+            }
+            else if (selectingPlayer == 2) {
+                if(key == KeyEvent.VK_LEFT) p2Selection = (p2Selection > 0) ? p2Selection - 1 : 3;
+                if (key == KeyEvent.VK_RIGHT) p2Selection = (p2Selection < 3) ? p2Selection + 1 : 0;
+                if (key == KeyEvent.VK_ENTER) {
+                    startNewMatch(p1Selection, p2Selection);
+                }
+            }
+            return;
+        }
 
         // P1 Controls
         if (key == KeyEvent.VK_A) aPressed = true;
